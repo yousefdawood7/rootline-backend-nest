@@ -69,6 +69,16 @@ export const createBetterAuth = (prisma: PrismaClient) => {
       enabled: true,
       window: 60,
       max: 100,
+      customRules: {
+        '/get-session': {
+          window: 60,
+          max: 120,
+        },
+        '/sign-out': {
+          window: 60,
+          max: 20,
+        },
+      },
     },
     plugins: [
       admin({

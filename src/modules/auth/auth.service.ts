@@ -18,6 +18,25 @@ import {
 } from './dto/auth-response.dto';
 import { SessionResponse } from './dto/session-response.dto';
 import { extractSetCookies } from '../../common/utils/cookie.util';
+import { z } from 'zod';
+
+const BetterAuthErrorSchema = z.object({
+  message: z.string().optional(),
+  code: z.string().optional(),
+});
+
+const BetterAuthSuccessSchema = z.object({
+  user: z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string(),
+    emailVerified: z.boolean(),
+    role: z.string().optional(),
+    image: z.string().nullable().optional(),
+    createdAt: z.union([z.string(), z.date()]),
+  }),
+  token: z.string().optional(),
+});
 
 export interface ServiceAuthResult {
   cookies: string[];
@@ -74,10 +93,8 @@ export class AuthService {
     });
 
     if (!res.ok) {
-      const errorBody = (await res.json().catch(() => ({}))) as {
-        message?: string;
-        code?: string;
-      };
+      const errorJson: unknown = await res.json().catch(() => ({}));
+      const errorBody = BetterAuthErrorSchema.parse(errorJson);
 
       if (
         res.status === 422 ||
@@ -94,18 +111,8 @@ export class AuthService {
 
     const cookies = extractSetCookies(res);
     const authToken = res.headers.get('set-auth-token');
-    const data = (await res.json()) as {
-      user: {
-        id: string;
-        name: string;
-        email: string;
-        emailVerified: boolean;
-        role?: string;
-        image?: string | null;
-        createdAt: string | Date;
-      };
-      token?: string;
-    };
+    const dataJson: unknown = await res.json();
+    const data = BetterAuthSuccessSchema.parse(dataJson);
 
     const token = authToken ?? data.token;
     if (!token) {
@@ -134,10 +141,8 @@ export class AuthService {
     });
 
     if (!res.ok) {
-      const errorBody = (await res.json().catch(() => ({}))) as {
-        message?: string;
-        code?: string;
-      };
+      const errorJson: unknown = await res.json().catch(() => ({}));
+      const errorBody = BetterAuthErrorSchema.parse(errorJson);
 
       if (res.status === 403 || errorBody.code === 'BANNED_USER') {
         throw new ForbiddenException(
@@ -156,18 +161,8 @@ export class AuthService {
 
     const cookies = extractSetCookies(res);
     const authToken = res.headers.get('set-auth-token');
-    const data = (await res.json()) as {
-      user: {
-        id: string;
-        name: string;
-        email: string;
-        emailVerified: boolean;
-        role?: string;
-        image?: string | null;
-        createdAt: string | Date;
-      };
-      token?: string;
-    };
+    const dataJson: unknown = await res.json();
+    const data = BetterAuthSuccessSchema.parse(dataJson);
 
     const token = authToken ?? data.token;
     if (!token) {

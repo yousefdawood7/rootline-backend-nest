@@ -9,6 +9,22 @@ import {
 import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
 import { ZodValidationException } from 'nestjs-zod';
+import { env } from '../../config/env';
+
+interface ExceptionWithStatus {
+  statusCode: number;
+  message?: unknown;
+  status?: unknown;
+}
+
+function isExceptionWithStatus(err: unknown): err is ExceptionWithStatus {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'statusCode' in err &&
+    typeof err.statusCode === 'number'
+  );
+}
 
 const HTTP_STATUS_NAMES: Record<number, string> = {
   [HttpStatus.BAD_REQUEST]: 'BAD_REQUEST',
@@ -52,9 +68,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message = 'Validation failed';
       const zodError = exception.getZodError();
       if (zodError && typeof zodError === 'object' && 'issues' in zodError) {
-        errors = Array.isArray(zodError.issues)
-          ? (zodError.issues as Record<string, unknown>[])
-          : [];
+        errors = Array.isArray(zodError.issues) ? zodError.issues : [];
       }
     } else if (exception instanceof HttpException) {
       statusCode = exception.getStatus();
@@ -94,23 +108,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
         code = `DATABASE_ERROR_${exception.code}`;
         message = 'Database operation failed';
       }
-    } else if (
-      typeof exception === 'object' &&
-      exception !== null &&
-      'statusCode' in exception &&
-      typeof (exception as Record<string, unknown>).statusCode === 'number'
-    ) {
-      const errObj = exception as Record<string, unknown>;
-      statusCode = errObj.statusCode as number;
+    } else if (isExceptionWithStatus(exception)) {
+      statusCode = exception.statusCode;
       message =
-        typeof errObj.message === 'string' ? errObj.message : 'Request failed';
+        typeof exception.message === 'string'
+          ? exception.message
+          : 'Request failed';
       code =
-        typeof errObj.status === 'string'
-          ? errObj.status
+        typeof exception.status === 'string'
+          ? exception.status
           : this.getStatusCodeName(statusCode);
     } else if (exception instanceof Error) {
       message =
-        process.env.NODE_ENV === 'production'
+        env.NODE_ENV === 'production'
           ? 'Internal server error'
           : exception.message;
     }
