@@ -52,11 +52,33 @@ scaffolded: never re-scaffold or restart it. Inspect the repo before changing it
 2. **Implement** only that phase. Do not touch unrelated features.
 3. **Verify**: run typecheck (`tsc --noEmit`), lint, tests, and fix everything.
 4. **Summarize**: what was built, endpoints, env vars, how to test, decisions made.
-5. **Update the roadmap below** (tick the boxes) and stop for approval.
+5. **Update the roadmap below** (tick the boxes).
+6. **Commit** the finished work (see "Git & commits" below), then stop for approval.
 
 If a requirement is unclear or risky, ask instead of guessing. If you know a
 better approach, say so with reasons. Explain non-obvious decisions in plain,
 beginner-friendly language.
+
+## Git & commits
+
+- After a phase passes verification (typecheck, lint, tests), **commit it yourself**.
+  Never commit code that fails typecheck, lint, or tests.
+- Use **Conventional Commits** (commitlint enforces this):
+  `type(scope): short description`, in the imperative, lowercase, no trailing period.
+  Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`, `build`, `perf`.
+  Examples: `feat(auth): add refresh token rotation`, `chore(db): add products migration`.
+- Make **small, logical commits** inside a phase (e.g. one for the Prisma schema +
+  migration, one for the module, one for tests, one for docs/roadmap) instead of
+  one giant commit. Each commit should leave the project in a working state.
+- Stage only files related to the change (`git add <paths>`). Never `git add .`
+  blindly, and never commit `.env`, secrets, `node_modules`, or build output.
+- Do NOT use `--no-verify` to skip the Husky hooks. If a hook fails, fix the problem.
+- Commit the roadmap tick (`docs(roadmap): complete phase N`) as part of the phase.
+- Do **not** push, force-push, rewrite history, or merge branches unless the user
+  explicitly asks. Committing locally is enough.
+- Work on a branch per phase if the user asks for it (`feat/phase-1-auth`);
+  otherwise commit on the current branch.
+- After committing, show the user `git log --oneline` for the phase's commits.
 
 ## Definition of done (per phase)
 
@@ -66,6 +88,7 @@ beginner-friendly language.
 - Swagger shows every new endpoint with correct schemas
 - Tests cover the happy path and the main failure cases
 - Roadmap updated
+- Work committed with Conventional Commit messages
 
 ---
 
