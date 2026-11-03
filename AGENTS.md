@@ -11,7 +11,7 @@ scaffolded: never re-scaffold or restart it. Inspect the repo before changing it
 ## Stack (non-negotiable)
 
 - NestJS, TypeScript with `strict: true`
-- Prisma + PostgreSQL
+- Prisma + PostgreSQL (Primary: Neon serverless Postgres; Docker Postgres is optional)
 - `@t3-oss/env-core` + Zod for environment variables (validated at startup)
 - Zod + `nestjs-zod` for validation and DTOs
 - `@nestjs/swagger` for OpenAPI docs at `/docs`
@@ -96,7 +96,7 @@ beginner-friendly language.
 
 ### MVP
 
-- [ ] **Phase 0 - Foundation**: t3-env, Prisma setup, global pipes/filters/logger,
+- [x] **Phase 0 - Foundation**: t3-env, Prisma setup, global pipes/filters/logger,
       Helmet/CORS/throttler, Swagger, `/health`, docker-compose Postgres, `.env.example`
 - [ ] **Phase 1 - Auth & Users**: register, login, refresh, logout, RBAC, password
       hashing, login rate limiting; profile, shipping addresses, admin user list
@@ -156,10 +156,13 @@ beginner-friendly language.
 
 ## Current status
 
-Phase in progress: **none yet (start with Phase 0 planning)**
+Phase in progress: **Phase 0 completed (stopped before Phase 1 for user review)**
 
 ## Decisions log
 
 Record important decisions here (date, decision, reason).
 
-- _empty_
+- 2026-11-04: Database: Neon. Pooled URL for the app, direct URL for migrations. Dev and test use separate Neon branches, never production.
+- 2026-11-04: Prisma 7 setup: CLI connection configured in `prisma.config.ts` using `DATABASE_URL_UNPOOLED` for migrations; runtime queries use pooled `DATABASE_URL` with `@prisma/adapter-pg`.
+- 2026-11-04: nestjs-zod v5: uses `cleanupOpenApiDoc(document)` for Swagger generation, and registers `ZodValidationPipe` (APP_PIPE) and `ZodSerializerInterceptor` (APP_INTERCEPTOR) globally.
+- 2026-11-04: TypeScript strictness: enabled `"strict": true`, `"noImplicitAny": true`, `"strictBindCallApply": true` in `tsconfig.json`.
