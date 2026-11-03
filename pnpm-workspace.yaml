@@ -15,3 +15,5 @@ minimumReleaseAgeExclude:
   - '@better-auth/telemetry@1.7.16'
   - better-auth@1.7.16
   - better-call@1.4.5
+patchedDependencies:
+  '@thallesp/nestjs-better-auth': patches/@thallesp__nestjs-better-auth.patch

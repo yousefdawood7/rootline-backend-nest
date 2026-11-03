@@ -1,17 +1,23 @@
 {
-  "moduleFileExtensions": ["js", "json", "ts"],
+  "moduleFileExtensions": ["js", "json", "ts", "mjs"],
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
   "transform": {
-    "^.+\\.(t|j)sx?$": [
+    "^.+\\.(t|j|mj)s$": [
       "ts-jest",
       {
-        "tsconfig": "tsconfig.json"
+        "useESM": false,
+        "tsconfig": {
+          "target": "ES2022",
+          "module": "commonjs",
+          "moduleResolution": "node",
+          "resolvePackageJsonExports": false,
+          "allowJs": true,
+          "esModuleInterop": true
+        }
       }
     ]
   },
-  "transformIgnorePatterns": [
-    "node_modules/(?!(\\.pnpm|@t3-oss))"
-  ]
+  "transformIgnorePatterns": []
 }

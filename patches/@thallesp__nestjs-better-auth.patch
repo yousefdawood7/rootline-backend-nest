@@ -1,0 +1,22 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 642869d8acde2f86db7479fd9f8265b2afbee389..ba73c622ce712f71876459a09fde7308e7f243d3 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -438,7 +438,7 @@ const BYTE_UNITS = {
+   gb: 1 << 30
+ };
+ 
+-const require$2 = createRequire(import.meta.url);
++const require$2 = createRequire(process.cwd());
+ let cachedQsParse;
+ function resolveFastifyParserType(type, fallback) {
+   if (type === void 0) {
+@@ -610,7 +610,7 @@ function configureFastifyBodyParser(httpAdapter, bodyParserOptions) {
+   });
+ }
+ 
+-const require$1 = createRequire(import.meta.url);
++const require$1 = createRequire(process.cwd());
+ const rawBodyParser = (req, _res, buffer) => {
+   if (Buffer.isBuffer(buffer)) {
+     req.rawBody = buffer;

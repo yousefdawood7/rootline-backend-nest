@@ -83,13 +83,28 @@
     "moduleFileExtensions": [
       "js",
       "json",
-      "ts"
+      "ts",
+      "mjs"
     ],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j|mj)s$": [
+        "ts-jest",
+        {
+          "useESM": false,
+          "tsconfig": {
+            "target": "ES2022",
+            "module": "commonjs",
+            "moduleResolution": "node",
+            "resolvePackageJsonExports": false,
+            "allowJs": true,
+            "esModuleInterop": true
+          }
+        }
+      ]
     },
+    "transformIgnorePatterns": [],
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],
