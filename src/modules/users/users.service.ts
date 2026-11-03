@@ -163,7 +163,11 @@ export class UsersService {
       throw new NotFoundException('Target user not found');
     }
 
-    if (input.banned && targetUser.role === 'ADMIN') {
+    if (
+      input.banned &&
+      targetUser.role === 'ADMIN' &&
+      targetUser.banned !== true
+    ) {
       const activeAdminsCount = await this.prisma.user.count({
         where: {
           role: 'ADMIN',

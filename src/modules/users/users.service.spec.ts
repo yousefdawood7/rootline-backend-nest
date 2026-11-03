@@ -224,6 +224,35 @@ describe('UsersService', () => {
       );
     });
 
+    it('should allow updating ban status or reason on an already-banned admin without throwing last-admin error', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'admin-2',
+        role: 'ADMIN',
+        banned: true,
+      });
+      mockBetterAuth.api.banUser.mockResolvedValue({ success: true });
+      mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+        id: 'admin-2',
+        name: 'Admin Two',
+        email: 'admin2@example.com',
+        emailVerified: true,
+        role: 'ADMIN',
+        banned: true,
+        banReason: 'Updated ban reason',
+        createdAt: sampleDate,
+        updatedAt: sampleDate,
+      });
+
+      const result = await service.adminUpdateStatus('admin-2', 'admin-1', {
+        banned: true,
+        banReason: 'Updated ban reason',
+      });
+
+      expect(mockPrisma.user.count).not.toHaveBeenCalled();
+      expect(result.id).toBe('admin-2');
+      expect(result.banReason).toBe('Updated ban reason');
+    });
+
     it('should deactivate a customer successfully via banUser', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 'customer-1',
