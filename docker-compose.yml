@@ -1,0 +1,24 @@
+# Optional: Local PostgreSQL service for offline development / testing.
+# Primary Database: Neon Serverless PostgreSQL (separate branches for dev, test, and prod).
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: rootline-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rootline_user
+      POSTGRES_PASSWORD: rootline_password
+      POSTGRES_DB: rootline_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U rootline_user -d rootline_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
