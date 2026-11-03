@@ -324,21 +324,46 @@ describe('Auth & Users (e2e)', () => {
       expect(parsed.message).toContain('Admins cannot deactivate themselves');
     });
 
-    it('should forbid deactivating the last remaining admin', async () => {
-      const adminCount = await prisma.user.count({
-        where: { role: 'ADMIN', banned: { not: true } },
+    it('should allow deactivating a secondary admin and allow updating ban status without false last-admin error', async () => {
+      const secondAdmin = await prisma.user.create({
+        data: {
+          id: `e2e_auth_test_sec_admin_${testId}`,
+          name: 'Secondary Admin',
+          email: `e2e_auth_test_sec_admin_${testId}@example.com`,
+          emailVerified: true,
+          role: 'ADMIN',
+          banned: false,
+        },
       });
 
-      if (adminCount === 1) {
-        const res = await request(app.getHttpServer())
-          .patch(`/admin/users/${adminId}/status`)
-          .set('Authorization', `Bearer ${adminToken}`)
-          .send({ banned: true })
-          .expect(400);
+      // Admin 1 deactivates Admin 2
+      const banRes = await request(app.getHttpServer())
+        .patch(`/admin/users/${secondAdmin.id}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          banned: true,
+          banReason: 'Testing secondary admin deactivation',
+        })
+        .expect(200);
 
-        const parsed = ErrorResponseSchema.parse(res.body);
-        expect(parsed.statusCode).toBe(400);
-      }
+      const parsedBan = AdminUserItemSchema.parse(banRes.body);
+      expect(parsedBan.banned).toBe(true);
+
+      // Now only 1 active admin remains. Updating the already-banned admin must NOT trigger last-admin error.
+      const updateRes = await request(app.getHttpServer())
+        .patch(`/admin/users/${secondAdmin.id}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          banned: true,
+          banReason: 'Updated ban reason for deactivated admin',
+        })
+        .expect(200);
+
+      const parsedUpdate = AdminUserItemSchema.parse(updateRes.body);
+      expect(parsedUpdate.banned).toBe(true);
+      expect(parsedUpdate.banReason).toBe(
+        'Updated ban reason for deactivated admin',
+      );
     });
 
     it('should allow admin to ban a customer and verify immediate session invalidation', async () => {
