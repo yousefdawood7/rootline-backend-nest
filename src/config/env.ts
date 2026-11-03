@@ -8,10 +8,7 @@ export const env = createEnv({
       .enum(['development', 'production', 'test'])
       .default('development'),
     PORT: z.coerce.number().int().positive().default(3000),
-    DATABASE_URL: z
-      .string()
-      .min(1, 'DATABASE_URL is required')
-      .url('DATABASE_URL must be a valid URL'),
+    DATABASE_URL: z.url('DATABASE_URL must be a valid URL'),
     DATABASE_URL_UNPOOLED: z
       .string()
       .min(1, 'DATABASE_URL_UNPOOLED is required')
