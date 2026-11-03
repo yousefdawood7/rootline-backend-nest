@@ -98,9 +98,15 @@ beginner-friendly language.
 
 - [x] **Phase 0 - Foundation**: t3-env, Prisma setup, global pipes/filters/logger,
       Helmet/CORS/throttler, Swagger, `/health`, docker-compose Postgres, `.env.example`
-- [ ] **Phase 1 - Auth & Users**: register, login, refresh, logout, RBAC, password
+- [x] **Phase 1 - Auth & Users**: register, login, refresh, logout, RBAC, password
       hashing, login rate limiting; profile, shipping addresses, admin user list
       (search, activate/deactivate)
+- [ ] **Phase 1.5 - Email verification & password reset**: email verification,
+      password reset, MailService, Mailpit in dev, Resend in prod
+- [ ] **Phase 1.6 - Security hardening & sessions**: account lockout, active
+      session management, audit log
+- [ ] **Phase 1.7 - OAuth**: Google login
+- [ ] **Phase 1.8 - Two-factor authentication (2FA)**
 - [ ] **Phase 2 - Categories & Products**: category public list + admin CRUD + slug +
       delete protection; products with pagination, filters, search, sorting, get by
       id or slug, admin CRUD, soft delete, image upload
@@ -118,9 +124,7 @@ beginner-friendly language.
 
 ### Advanced (do in this order, one phase at a time)
 
-- [ ] **A1 - Advanced security**: email verification, password reset, token rotation,
-      session management, account lockout, audit log, granular permissions,
-      OAuth login, 2FA
+- [ ] **A1 - Advanced security**: granular permissions, advanced security policies
 - [ ] **A2 - Performance foundations**: Redis caching, cursor pagination,
       per-user rate limiting, CDN-ready image delivery
 - [ ] **A3 - Notifications & jobs**: BullMQ queues, transactional emails, retries, cron jobs
@@ -156,7 +160,7 @@ beginner-friendly language.
 
 ## Current status
 
-Phase in progress: **Phase 0 completed (stopped before Phase 1 for user review)**
+Phase in progress: **Phase 1 completed (stopped before Phase 1.5 for user review)**
 
 ## Decisions log
 
@@ -166,3 +170,7 @@ Record important decisions here (date, decision, reason).
 - 2026-11-04: Prisma 7 setup: CLI connection configured in `prisma.config.ts` using `DATABASE_URL_UNPOOLED` for migrations; runtime queries use pooled `DATABASE_URL` with `@prisma/adapter-pg`.
 - 2026-11-04: nestjs-zod v5: uses `cleanupOpenApiDoc(document)` for Swagger generation, and registers `ZodValidationPipe` (APP_PIPE) and `ZodSerializerInterceptor` (APP_INTERCEPTOR) globally.
 - 2026-11-04: TypeScript strictness: enabled `"strict": true`, `"noImplicitAny": true`, `"strictBindCallApply": true` in `tsconfig.json`.
+- 2026-11-04: Better Auth integration: used @thallesp/nestjs-better-auth 2.8.0 with @better-auth/prisma-adapter 1.7.16. Disabled native /sign-up/email and /sign-in/email via disabledPaths so NestJS wrapper controllers enforce strict Zod validation, OpenAPI documentation, and dual cookie/bearer tokens.
+- 2026-11-04: RBAC & Permissions: configured Better Auth admin plugin with adminRoles: ['ADMIN'], defaultRole: 'CUSTOMER', and custom AccessControl roles (ADMIN, CUSTOMER) matching NestJS @Roles('ADMIN'). User.role is non-nullable with @default("CUSTOMER").
+- 2026-11-04: Session security: cookieCache disabled ({ enabled: false }) guaranteeing database checks on every request; banning a user immediately revokes sessions and rejects requests with 401. Admins are prevented from deactivating themselves or the last active admin.
+- 2026-11-04: Address management: default address changes run in a single atomic transaction ensuring at most one default address per user.
