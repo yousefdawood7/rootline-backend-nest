@@ -94,6 +94,20 @@ export class AllExceptionsFilter implements ExceptionFilter {
         code = `DATABASE_ERROR_${exception.code}`;
         message = 'Database operation failed';
       }
+    } else if (
+      typeof exception === 'object' &&
+      exception !== null &&
+      'statusCode' in exception &&
+      typeof (exception as Record<string, unknown>).statusCode === 'number'
+    ) {
+      const errObj = exception as Record<string, unknown>;
+      statusCode = errObj.statusCode as number;
+      message =
+        typeof errObj.message === 'string' ? errObj.message : 'Request failed';
+      code =
+        typeof errObj.status === 'string'
+          ? errObj.status
+          : this.getStatusCodeName(statusCode);
     } else if (exception instanceof Error) {
       message =
         process.env.NODE_ENV === 'production'

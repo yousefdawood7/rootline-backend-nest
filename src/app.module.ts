@@ -6,18 +6,33 @@ import { randomUUID } from 'node:crypto';
 import { Request } from 'express';
 import { LoggerModule } from 'nestjs-pino';
 import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
+import { AuthModule as BetterAuthModule } from '@thallesp/nestjs-better-auth';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
+import { createBetterAuth } from './config/auth.config';
 import { ConfigModule } from './config/config.module';
 import { ConfigService } from './config/config.service';
 import { PrismaModule } from './database/prisma.module';
+import { PrismaService } from './database/prisma.service';
+import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
     ConfigModule,
     PrismaModule,
+    BetterAuthModule.forRootAsync({
+      imports: [PrismaModule],
+      inject: [PrismaService],
+      useFactory: (prisma: PrismaService) => ({
+        auth: createBetterAuth(prisma),
+        disableTrustedOriginsCors: true,
+      }),
+    }),
+    AuthModule,
+    UsersModule,
     HealthModule,
     LoggerModule.forRootAsync({
       imports: [ConfigModule],

@@ -2,8 +2,10 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AppInfoResponseDto } from './app.dto';
 import { AppService } from './app.service';
+import { AllowAnonymous } from './common/decorators/auth.decorator';
 
 @ApiTags('Root')
+@AllowAnonymous()
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}

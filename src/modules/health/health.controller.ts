@@ -12,8 +12,10 @@ import {
 } from '@nestjs/terminus';
 import { HealthResponseDto } from './dto/health-response.dto';
 import { CustomPrismaHealthIndicator } from './prisma.health';
+import { AllowAnonymous } from '../../common/decorators/auth.decorator';
 
 @ApiTags('Health')
+@AllowAnonymous()
 @Controller('health')
 export class HealthController {
   constructor(
