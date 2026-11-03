@@ -15,8 +15,12 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('should return app info', () => {
+      expect(appController.getRoot()).toEqual({
+        name: 'rootline-backend-nest',
+        version: '0.0.1',
+        docs: '/docs',
+      });
     });
   });
 });
