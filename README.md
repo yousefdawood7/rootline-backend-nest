@@ -86,16 +86,19 @@ ADMIN_EMAIL=admin@rootline.local
 ADMIN_PASSWORD=YourAdminSecretPassword123!
 ```
 
-Now run the migrations, seed the initial administrator, and start the development server:
+Now run the migrations, generate the Prisma model types, seed the initial administrator, and start the development server:
 
 ```bash
-# 3. Create database tables and seed the admin user
+# 3. Create database tables, generate types & seed the admin user
 pnpm run prisma:migrate
+pnpm run prisma:generate
 pnpm run seed
 
 # 4. Start the backend in watch mode
 pnpm run start:dev
 ```
+
+> **Note on Prisma Types**: Running `pnpm install` automatically triggers the `postinstall` script to generate TypeScript types for `@prisma/client`. Whenever you modify `prisma/schema.prisma` or pull new migrations, run `pnpm run prisma:generate` to regenerate the model types.
 
 Your API is now running live at **`http://localhost:3000`**! 🎉
 
@@ -517,13 +520,20 @@ Apply all schema migrations to your Neon database:
 pnpm run prisma:migrate
 ```
 
-### 6. Seed the Initial Administrator
+### 6. Generate Prisma TypeScript Types
+Generate the strongly typed Prisma client matching your database models:
+```bash
+pnpm run prisma:generate
+```
+*(This also runs automatically on `pnpm install` via the `postinstall` script and before builds via `prebuild`).*
+
+### 7. Seed the Initial Administrator
 Run the seed script to create the initial admin account using the credentials defined in `.env`:
 ```bash
 pnpm run seed
 ```
 
-### 7. Start the Development Server
+### 8. Start the Development Server
 ```bash
 pnpm run start:dev
 ```
@@ -564,6 +574,8 @@ All scripts defined in `package.json`:
 
 | Script | Command | Purpose |
 | :--- | :--- | :--- |
+| `pnpm run postinstall` | `prisma generate` | Automatically executed by `pnpm install` to generate Prisma Client TypeScript types. |
+| `pnpm run prebuild` | `prisma generate` | Automatically executed before `pnpm run build` to ensure model types are up-to-date. |
 | `pnpm run build` | `nest build` | Compiles the TypeScript application into standard JavaScript in `dist/`. |
 | `pnpm run format` | `prettier --write ...` | Automatically formats TypeScript files using Prettier. |
 | `pnpm run start` | `nest start` | Starts the NestJS application. |
@@ -576,7 +588,7 @@ All scripts defined in `package.json`:
 | `pnpm run test:cov` | `jest --coverage` | Generates a unit test code coverage report in `coverage/`. |
 | `pnpm run test:debug` | `node --inspect-brk ...` | Debugs unit tests using the Node inspector. |
 | `pnpm run test:e2e` | `jest --config ./test/jest-e2e.json` | Runs end-to-end integration tests against the database. |
-| `pnpm run prisma:generate` | `prisma generate` | Re-generates the Prisma Client TypeScript typings. |
+| `pnpm run prisma:generate` | `prisma generate` | Generates Prisma Client TypeScript typings (`User`, `Session`, `Address`, etc.). |
 | `pnpm run prisma:migrate` | `prisma migrate dev` | Creates and applies database migrations using `DATABASE_URL_UNPOOLED`. |
 | `pnpm run seed` | `tsx prisma/seed.ts` | Seeds the database with the initial administrator account. |
 
