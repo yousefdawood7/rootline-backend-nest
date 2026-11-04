@@ -95,111 +95,173 @@ The project is developed in phased milestones. Below is the current implementati
 
 ## 🔍 How It Works
 
+Rootline is built as a layered modular architecture. Every request passes through a deterministic pipeline that handles security, observability, validation, authorization, business logic, and transactional database persistence.
+
+---
+
 ### Architecture Request Flow
 
-When an HTTP request reaches the server, it passes through layers of security, validation, authentication, and database pooling before returning a typed response:
+The following diagram illustrates how an incoming request travels through each layer of the NestJS application:
 
 ```mermaid
 flowchart TD
-    Client["Client (Browser / Mobile App / API Client)"] --> Middleware["RequestId & Pino HTTP Logger"]
-    Middleware --> Security["Helmet Headers & Throttler Rate Limiter"]
-    Security --> Validation["ZodValidationPipe (Strict Input Validation)"]
-    Validation --> AuthGuard["BetterAuth Guard & RolesGuard ('CUSTOMER' / 'ADMIN')"]
-    AuthGuard --> Controllers["NestJS Wrapper Controllers"]
-    Controllers --> Services["Feature Services (Business Logic)"]
-    Services --> BetterAuth["Better Auth Core Engine"]
-    Services --> Prisma["Prisma Client (@prisma/adapter-pg)"]
+    Client["Client: Browser / Mobile App / API Client"] --> Middleware["1. RequestId & Pino HTTP Logger"]
+    Middleware --> Security["2. Helmet Headers & Throttler Rate Limiter"]
+    Security --> Validation["3. ZodValidationPipe: Strict Input Validation"]
+    Validation --> AuthGuard["4. BetterAuth Guard & RolesGuard"]
+    AuthGuard --> Controllers["5. NestJS Wrapper Controllers"]
+    Controllers --> Services["6. Feature Services: Business Logic"]
+    Services --> BetterAuth["7. Better Auth Core Engine"]
+    Services --> Prisma["8. Prisma Client with pg Adapter"]
     BetterAuth --> Prisma
-    Prisma --> PooledDB[("Neon Serverless Postgres (Pooled Runtime)")]
+    Prisma --> PooledDB["Neon Serverless PostgreSQL: Pooled Runtime"]
 
-    subgraph MigrationsOnly["Database Migrations (CLI Only)"]
-        DirectDB[("Neon Direct Connection (DATABASE_URL_UNPOOLED)")]
+    subgraph MigrationsCLI["CLI Operations Only"]
+        DirectDB["Neon Direct Socket: DATABASE_URL_UNPOOLED"]
     end
 ```
 
-**Flow explanation**:
-1. **Middleware & Security**: Every incoming request receives a unique `X-Request-Id`, headers are hardened via Helmet, and client rates are checked against `@nestjs/throttler`.
-2. **Strict Validation**: The global `ZodValidationPipe` validates the body against Zod schemas, stripping or rejecting unpermitted properties.
-3. **Authentication & Authorization**: Better Auth inspects either the session cookie or the Bearer token against live database records. If the user is active, the `@Roles()` guard verifies permissions.
-4. **Database Execution**: Queries execute through Prisma using `@prisma/adapter-pg` over Neon's connection pooler.
+#### The 5-Stage Request Processing Pipeline
+
+1. **Ingress & Observability (`RequestIdMiddleware` + Pino)**
+   - Every request is tagged with a unique `X-Request-Id` (UUID v4) or preserves the incoming header from the client.
+   - Pino logs the method, path, client IP, and response time in high-throughput JSON format for monitoring.
+
+2. **Security & Traffic Shaping (Helmet + Throttler + CORS)**
+   - **Helmet** injects standard security headers (`Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, etc.).
+   - **Throttler** enforces sliding-window rate limits (100 requests / 60 seconds globally; strict 5 requests / 60 seconds on sensitive auth routes).
+   - **CORS** verifies incoming request origins against `CORS_ORIGIN`, allowing safe browser cross-origin requests.
+
+3. **Strict Validation & Serialization (`ZodValidationPipe` + `ZodSerializerInterceptor`)**
+   - Incoming payloads are validated against Zod DTO schemas.
+   - Any unknown properties are rejected (`.strict()`), preventing parameter injection and privilege escalation.
+   - Outgoing responses are serialized to strip internal database fields and conform to OpenAPI schemas.
+
+4. **Authentication & Authorization (`BetterAuthGuard` + `RolesGuard`)**
+   - The auth guard extracts the session from the HTTP-only cookie (`better-auth.session_token`) or the `Authorization: Bearer <token>` header.
+   - The session is validated in real time against Neon PostgreSQL (`cookieCache: { enabled: false }`).
+   - If the route has `@Roles('ADMIN')`, the `RolesGuard` verifies that `user.role === 'ADMIN'`. Non-admins receive `403 Forbidden`.
+
+5. **Business Logic & Persistence (`Services` + `PrismaService` + Neon)**
+   - Controllers delegate all domain logic to injectable Services (`AuthService`, `UsersService`, `AddressesService`).
+   - Database operations use `@prisma/adapter-pg` over Neon's connection pooler (`DATABASE_URL`).
+   - Multi-step writes (such as switching the default address) execute inside an atomic `prisma.$transaction`.
+
+---
+
+### Step-by-Step Request Lifecycle Example
+
+Here is what happens under the hood when a customer adds a shipping address (`POST /users/me/addresses`):
+
+```text
+1. Client Sends HTTP POST /users/me/addresses
+   ├── Header: Authorization: Bearer <token>
+   └── Body: { "recipientName": "Jane Doe", "street": "100 Broadway", "isDefault": true, ... }
+
+2. Ingress Pipeline
+   ├── RequestIdMiddleware assigns X-Request-Id: "a1b2c3d4-..."
+   ├── ThrottlerGuard checks rate limit bucket (Permitted: 99 remaining)
+   └── ZodValidationPipe validates body against CreateAddressDto
+       └── Strips/rejects any unknown keys
+
+3. Auth Guard
+   ├── BetterAuth looks up session token in Postgres
+   ├── Verifies user is active and NOT banned
+   └── Attaches user session to Request context
+
+4. Service & Database Transaction
+   ├── AddressesService opens prisma.$transaction:
+   │   ├── 1. Unsets isDefault = false on all existing addresses for this user
+   │   └── 2. Inserts the new Address with isDefault = true
+   └── Transaction commits atomically
+
+5. Response Formatting
+   ├── ZodSerializerInterceptor transforms the created entity into AddressResponseDto
+   ├── Pino logs request completion (201 Created, responseTime: 32ms)
+   └── Client receives JSON payload with HTTP 201 Created
+```
 
 ---
 
 ### Database Models
 
-Our database schema manages users, credentials, active sessions, and customer shipping addresses:
+Our database schema manages user identities, credential accounts, active sessions, and shipping addresses:
 
 ```mermaid
 erDiagram
-    User ||--o{ Session : "has many"
-    User ||--o{ Account : "has many"
-    User ||--o{ Address : "has many"
+    User ||--o{ Session : has
+    User ||--o{ Account : has
+    User ||--o{ Address : has
 
     User {
-        String id PK
-        String name
-        String email UK
-        Boolean emailVerified
-        String image
-        String role "CUSTOMER | ADMIN"
-        Boolean banned
-        String banReason
-        DateTime banExpires
-        DateTime createdAt
-        DateTime updatedAt
+        string id PK
+        string name
+        string email UK
+        boolean emailVerified
+        string image
+        string role
+        boolean banned
+        string banReason
+        datetime banExpires
+        datetime createdAt
+        datetime updatedAt
     }
 
     Session {
-        String id PK
-        String token UK
-        DateTime expiresAt
-        String ipAddress
-        String userAgent
-        String userId FK
-        DateTime createdAt
-        DateTime updatedAt
+        string id PK
+        string token UK
+        datetime expiresAt
+        string ipAddress
+        string userAgent
+        string userId FK
+        datetime createdAt
+        datetime updatedAt
     }
 
     Account {
-        String id PK
-        String accountId
-        String providerId
-        String userId FK
-        String password
-        DateTime createdAt
-        DateTime updatedAt
+        string id PK
+        string accountId
+        string providerId
+        string userId FK
+        string password
+        datetime createdAt
+        datetime updatedAt
     }
 
     Verification {
-        String id PK
-        String identifier
-        String value
-        DateTime expiresAt
-        DateTime createdAt
-        DateTime updatedAt
+        string id PK
+        string identifier
+        string value
+        datetime expiresAt
+        datetime createdAt
+        datetime updatedAt
     }
 
     Address {
-        String id PK
-        String userId FK
-        String recipientName
-        String phone
-        String street
-        String city
-        String state
-        String postalCode
-        String country
-        Boolean isDefault
-        DateTime createdAt
-        DateTime updatedAt
+        string id PK
+        string userId FK
+        string recipientName
+        string phone
+        string street
+        string city
+        string state
+        string postalCode
+        string country
+        boolean isDefault
+        datetime createdAt
+        datetime updatedAt
     }
 ```
 
-**Key model details**:
-- **User**: Stores primary identity, role (`CUSTOMER` or `ADMIN`), and account ban/deactivation status.
-- **Session**: Tracks active user sessions. When a user logs out or is banned, sessions are immediately invalidated.
-- **Account**: Holds the credential provider information and hashed passwords.
-- **Address**: Stores customer shipping addresses with an `isDefault` flag managed atomically.
+#### Detailed Entity Specifications
+
+| Entity | Purpose | Key Constraints & Invariants |
+| :--- | :--- | :--- |
+| **`User`** | Primary identity record for customers and administrators. | • `email` is lowercase and unique (`UK`).<br>• `role` is non-nullable string (`@default("CUSTOMER")`).<br>• `banned` flag (`boolean`, `@default(false)`) immediately revokes access.<br>• Cascade deletes related sessions, accounts, and addresses on removal. |
+| **`Session`** | Represents an active authenticated session. | • `token` is unique (`UK`).<br>• Stores client metadata (`ipAddress`, `userAgent`).<br>• Checked against the database on every request (`cookieCache: false`). |
+| **`Account`** | Holds credential provider details and password hashes. | • Stores argon2 password hashes for email/password authentication.<br>• Extensible for OAuth providers (Google, GitHub) in future phases. |
+| **`Verification`** | Holds temporary tokens for verification workflows. | • Stores one-time tokens for email verification and password resets.<br>• Includes expiration timestamps (`expiresAt`). |
+| **`Address`** | Customer shipping addresses. | • Scoped to `userId` via foreign key.<br>• `isDefault` boolean managed via Prisma transactions to ensure at most one default per user. |
 
 ---
 
