@@ -17,6 +17,7 @@ A production-grade, modular e-commerce backend built with NestJS, TypeScript, Be
 
 ## 📑 Table of Contents
 
+- [⚡ Quickstart for Frontend Developers](#-quickstart-for-frontend-developers)
 - [What is this?](#-what-is-this)
 - [Features](#-features)
 - [Tech Stack](#-tech-stack)
@@ -33,6 +34,101 @@ A production-grade, modular e-commerce backend built with NestJS, TypeScript, Be
 - [Roadmap](#-roadmap)
 - [Contributing](#-contributing)
 - [License](#-license)
+
+---
+
+## ⚡ Quickstart for Frontend Developers
+
+> **Building a frontend for Rootline?** You do not need to understand NestJS internals to start integrating. Follow these 3 steps to get the database keys, spin up the server, and make your first authenticated request.
+
+---
+
+### Step 1: Get Your Free Neon Database Keys (Takes 1 Minute)
+This backend uses **Neon Serverless PostgreSQL**. You need 2 connection strings from a free Neon account:
+
+1. Sign up or log into the **[Neon Console](https://console.neon.tech)** (free tier, no credit card required).
+2. Create a new project (e.g., `rootline-dev`).
+3. In the Neon Dashboard, locate the **Connection Details** card:
+   - **Pooled connection string (`DATABASE_URL`)**: Check the **"Pooled connection"** toggle (the hostname will include `-pooler`). Click **Copy**.
+   - **Direct connection string (`DATABASE_URL_UNPOOLED`)**: Uncheck the **"Pooled connection"** toggle (direct connection). Click **Copy**.
+
+---
+
+### Step 2: Configure `.env` & Start the Backend (2 Minutes)
+
+Run these commands in your terminal:
+
+```bash
+# 1. Install dependencies
+pnpm install
+
+# 2. Create your local .env from the template
+cp .env.example .env
+```
+
+Open `.env` in your editor and ensure these keys are filled in:
+
+```env
+# Paste your Neon connection strings:
+DATABASE_URL=postgresql://user:password@ep-sample-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require
+DATABASE_URL_UNPOOLED=postgresql://user:password@ep-sample.us-east-2.aws.neon.tech/neondb?sslmode=require
+
+# Any random string with at least 32 characters (or generate via: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+BETTER_AUTH_SECRET=your_better_auth_secret_minimum_32_characters_long
+JWT_ACCESS_SECRET=your_super_secret_jwt_access_key_min_32_chars
+JWT_REFRESH_SECRET=your_super_secret_jwt_refresh_key_min_32_chars
+
+# Your frontend dev URL (e.g. Next.js on 3000, Vite on 5173, etc.):
+CORS_ORIGIN=http://localhost:3000,http://localhost:5173
+
+# Admin credentials for initial seed:
+ADMIN_EMAIL=admin@rootline.local
+ADMIN_PASSWORD=YourAdminSecretPassword123!
+```
+
+Now run the migrations, seed the initial administrator, and start the development server:
+
+```bash
+# 3. Create database tables and seed the admin user
+pnpm run prisma:migrate
+pnpm run seed
+
+# 4. Start the backend in watch mode
+pnpm run start:dev
+```
+
+Your API is now running live at **`http://localhost:3000`**! 🎉
+
+---
+
+### Step 3: How to Connect & Authenticate from Frontend
+
+- **API Documentation & Interactive Playground**: Open **[http://localhost:3000/docs](http://localhost:3000/docs)** to test endpoints live in your browser.
+- **OpenAPI Schema for Code Generation**: Point tools like **Orval**, **TanStack Query codegen**, or **openapi-typescript** directly to **[http://localhost:3000/docs-json](http://localhost:3000/docs-json)** to generate typed API hooks automatically.
+
+#### Authentication Methods:
+
+| Client Type | How to Authenticate | What Your Code Does |
+| :--- | :--- | :--- |
+| **Browser (Next.js, React, Vue, Svelte)** | **Session Cookies**<br>`/auth/login` and `/auth/register` set an `HttpOnly` cookie (`better-auth.session_token`). | Add `credentials: 'include'` to `fetch()` or `withCredentials: true` in Axios. Browser automatically sends cookies with every request! |
+| **Mobile / Native Apps (React Native, Flutter)** | **Bearer Token**<br>`/auth/login` and `/auth/register` return `{ token: "...", user: { ... } }` in the response body. | Save `token` in secure storage and attach header:<br>`Authorization: Bearer <token>` |
+
+```typescript
+// Example: Frontend login using standard fetch with cookies
+const response = await fetch('http://localhost:3000/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include', // <-- Important: tells browser to store and send session cookies!
+  body: JSON.stringify({
+    email: 'admin@rootline.local',
+    password: 'YourAdminSecretPassword123!',
+  }),
+});
+
+const data = await response.json();
+console.log('Logged in user:', data.user);
+// data.token is also available if you prefer Bearer token authorization!
+```
 
 ---
 
